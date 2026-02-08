@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=380">
+  <title>PaperVocab</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <!-- Header -->
+  <header class="pv-header">
+    <div class="pv-header-left">
+      <span class="pv-logo">📖</span>
+      <span class="pv-title">PaperVocab</span>
+    </div>
+    <button class="pv-settings-btn" id="btn-settings" title="设置">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+      </svg>
+    </button>
+  </header>
+
+  <!-- Tabs -->
+  <nav class="pv-tabs">
+    <button class="pv-tab active" data-tab="vocabulary">生词本</button>
+    <button class="pv-tab" data-tab="review">复习</button>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="pv-main">
+    <!-- Vocabulary Tab -->
+    <div class="pv-tab-content active" id="tab-vocabulary">
+      <!-- Search + Sort -->
+      <div class="pv-toolbar">
+        <div class="pv-search-wrap">
+          <svg class="pv-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <input type="text" class="pv-search" id="search-input" placeholder="搜索单词...">
+        </div>
+        <div class="pv-sort-group">
+          <button class="pv-sort-btn active" data-sort="queryCount" title="按查询次数">次数</button>
+          <button class="pv-sort-btn" data-sort="createdAt" title="按添加时间">时间</button>
+          <button class="pv-sort-btn" data-sort="word" title="按字母排序">字母</button>
+        </div>
+      </div>
+
+      <!-- Word List -->
+      <div class="pv-word-list" id="word-list">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- Empty State -->
+      <div class="pv-empty-state" id="empty-state" style="display:none;">
+        <div class="pv-empty-icon">📚</div>
+        <div class="pv-empty-title">生词本还是空的</div>
+        <div class="pv-empty-desc">在网页上划选英文单词，点击浮标图标即可查词并收藏。</div>
+        <button class="pv-empty-btn" id="btn-empty-settings">去设置 API Key →</button>
+      </div>
+    </div>
+
+    <!-- Review Tab -->
+    <div class="pv-tab-content" id="tab-review">
+      <!-- Review Idle -->
+      <div class="pv-review-idle" id="review-idle">
+        <div class="pv-review-info">
+          <div class="pv-review-count" id="review-count">0</div>
+          <div class="pv-review-label">可复习词数</div>
+        </div>
+        <div class="pv-review-options">
+          <label class="pv-review-option">
+            <input type="radio" name="review-range" value="unmastered" checked>
+            <span>全部未掌握</span>
+          </label>
+          <label class="pv-review-option">
+            <input type="radio" name="review-range" value="unknown">
+            <span>只不认识 (level=0)</span>
+          </label>
+          <label class="pv-review-option">
+            <input type="radio" name="review-range" value="frequent">
+            <span>高频词 (≥3次)</span>
+          </label>
+          <label class="pv-review-option">
+            <input type="radio" name="review-range" value="random">
+            <span>随机 N 个</span>
+          </label>
+        </div>
+        <button class="pv-btn-start-review" id="btn-start-review">开始复习</button>
+      </div>
+
+      <!-- Review Card -->
+      <div class="pv-review-card-view" id="review-card-view" style="display:none;">
+        <div class="pv-review-topbar">
+          <button class="pv-btn-back" id="btn-review-back">← 返回</button>
+          <span class="pv-review-progress" id="review-progress">1 / 20</span>
+        </div>
+        <div class="pv-card-container" id="card-container">
+          <div class="pv-card" id="review-card">
+            <div class="pv-card-front" id="card-front">
+              <div class="pv-card-word" id="card-word"></div>
+              <div class="pv-card-count" id="card-count"></div>
+              <div class="pv-card-hint">点击翻转查看释义</div>
+            </div>
+            <div class="pv-card-back" id="card-back">
+              <div class="pv-card-word" id="card-back-word"></div>
+              <div class="pv-card-phonetic" id="card-back-phonetic"></div>
+              <div class="pv-card-definition" id="card-back-definition"></div>
+              <div class="pv-card-example" id="card-back-example"></div>
+            </div>
+          </div>
+        </div>
+        <div class="pv-review-buttons">
+          <button class="pv-btn-know" id="btn-know">✓ 认识</button>
+          <button class="pv-btn-fuzzy" id="btn-fuzzy">△ 模糊</button>
+          <button class="pv-btn-unknown" id="btn-unknown">✗ 不认识</button>
+        </div>
+      </div>
+
+      <!-- Review Completed -->
+      <div class="pv-review-completed" id="review-completed" style="display:none;">
+        <div class="pv-completed-title">本轮复习完成！</div>
+        <div class="pv-completed-stats">
+          <div class="pv-stat-row pv-stat-know">
+            <span class="pv-stat-icon">✓</span>
+            <span class="pv-stat-label">认识</span>
+            <span class="pv-stat-value" id="stat-know">0</span>
+            <span>个</span>
+          </div>
+          <div class="pv-stat-row pv-stat-fuzzy">
+            <span class="pv-stat-icon">△</span>
+            <span class="pv-stat-label">模糊</span>
+            <span class="pv-stat-value" id="stat-fuzzy">0</span>
+            <span>个</span>
+          </div>
+          <div class="pv-stat-row pv-stat-unknown">
+            <span class="pv-stat-icon">✗</span>
+            <span class="pv-stat-label">不认识</span>
+            <span class="pv-stat-value" id="stat-unknown">0</span>
+            <span>个</span>
+          </div>
+        </div>
+        <div class="pv-completed-actions">
+          <button class="pv-btn-again" id="btn-again">再来一轮</button>
+          <button class="pv-btn-back-vocab" id="btn-back-vocab">返回生词本</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer Stats -->
+  <footer class="pv-footer" id="footer-stats">
+    <span id="stat-total">总计: 0 词</span>
+    <span class="pv-footer-sep">|</span>
+    <span id="stat-week">本周 +0</span>
+    <span class="pv-footer-sep">|</span>
+    <span id="stat-mastered">已掌握 0</span>
+  </footer>
+
+  <!-- Delete Confirm Dialog -->
+  <div class="pv-dialog-overlay" id="dialog-overlay" style="display:none;">
+    <div class="pv-dialog">
+      <div class="pv-dialog-title" id="dialog-title">确认删除</div>
+      <div class="pv-dialog-body" id="dialog-body">确定要删除这个单词吗？</div>
+      <div class="pv-dialog-actions">
+        <button class="pv-dialog-cancel" id="dialog-cancel">取消</button>
+        <button class="pv-dialog-confirm" id="dialog-confirm">删除</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

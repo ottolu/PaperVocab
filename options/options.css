@@ -1,0 +1,266 @@
+/* ─── PaperVocab Options Page Styles ────────────────────── */
+
+:root {
+  --pv-primary: #2563EB;
+  --pv-primary-dark: #1D4ED8;
+  --pv-bg: #FFFFFF;
+  --pv-bg-page: #F9FAFB;
+  --pv-text: #1F2937;
+  --pv-text-secondary: #6B7280;
+  --pv-text-muted: #9CA3AF;
+  --pv-success: #10B981;
+  --pv-danger: #EF4444;
+  --pv-border: #E5E7EB;
+  --pv-bg-light: #F3F4F6;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  color: var(--pv-text);
+  background: var(--pv-bg-page);
+  min-height: 100vh;
+}
+
+.pv-options-container {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+/* ─── Header ──────────────────────────────────────────────── */
+
+.pv-options-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 32px;
+}
+
+.pv-options-logo {
+  font-size: 32px;
+}
+
+.pv-options-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--pv-text);
+}
+
+/* ─── Sections ────────────────────────────────────────────── */
+
+.pv-section {
+  background: var(--pv-bg);
+  border: 1px solid var(--pv-border);
+  border-radius: 12px;
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.pv-section-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--pv-text);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--pv-border);
+}
+
+/* ─── Form Groups ─────────────────────────────────────────── */
+
+.pv-form-group {
+  margin-bottom: 16px;
+}
+
+.pv-form-group:last-child {
+  margin-bottom: 0;
+}
+
+.pv-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--pv-text);
+  margin-bottom: 6px;
+}
+
+.pv-input, .pv-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--pv-border);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--pv-text);
+  background: var(--pv-bg);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.pv-input:focus, .pv-select:focus {
+  border-color: var(--pv-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.pv-input-number {
+  width: 120px;
+}
+
+.pv-hint {
+  font-size: 12px;
+  color: var(--pv-text-muted);
+  margin-top: 4px;
+}
+
+/* ─── Radio Group ─────────────────────────────────────────── */
+
+.pv-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pv-radio-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--pv-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  font-size: 13px;
+}
+
+.pv-radio-option:hover {
+  border-color: var(--pv-primary);
+}
+
+.pv-radio-option input[type="radio"] {
+  accent-color: var(--pv-primary);
+}
+
+/* ─── Buttons ─────────────────────────────────────────────── */
+
+.pv-form-actions {
+  margin-bottom: 20px;
+}
+
+.pv-btn-save {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 32px;
+  background: var(--pv-primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.pv-btn-save:hover {
+  background: var(--pv-primary-dark);
+}
+
+/* ─── Data Management ─────────────────────────────────────── */
+
+.pv-section-data {
+  border-color: #FECACA;
+}
+
+.pv-data-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pv-btn-export, .pv-btn-import, .pv-btn-clear {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid var(--pv-border);
+  background: var(--pv-bg);
+}
+
+.pv-btn-export {
+  color: var(--pv-primary);
+}
+
+.pv-btn-export:hover {
+  background: #EFF6FF;
+  border-color: var(--pv-primary);
+}
+
+.pv-btn-import {
+  color: var(--pv-primary);
+  display: inline-flex;
+  align-items: center;
+}
+
+.pv-btn-import:hover {
+  background: #EFF6FF;
+  border-color: var(--pv-primary);
+}
+
+.pv-btn-clear {
+  color: var(--pv-danger);
+}
+
+.pv-btn-clear:hover {
+  background: #FEF2F2;
+  border-color: var(--pv-danger);
+}
+
+.pv-data-info {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--pv-text-secondary);
+}
+
+/* ─── Toast ───────────────────────────────────────────────── */
+
+.pv-toast {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  z-index: 999;
+  animation: pv-toast-in 0.3s ease;
+}
+
+.pv-toast.success {
+  background: #ECFDF5;
+  color: #065F46;
+  border: 1px solid #A7F3D0;
+}
+
+.pv-toast.error {
+  background: #FEF2F2;
+  color: #991B1B;
+  border: 1px solid #FECACA;
+}
+
+.pv-toast.info {
+  background: #EFF6FF;
+  color: #1E40AF;
+  border: 1px solid #BFDBFE;
+}
+
+@keyframes pv-toast-in {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

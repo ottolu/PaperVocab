@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PaperVocab 设置</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="pv-options-container">
+    <header class="pv-options-header">
+      <span class="pv-options-logo">📖</span>
+      <h1 class="pv-options-title">PaperVocab 设置</h1>
+    </header>
+
+    <form id="settings-form" autocomplete="off">
+      <!-- LLM Configuration -->
+      <section class="pv-section">
+        <h2 class="pv-section-title">LLM 配置</h2>
+
+        <div class="pv-form-group">
+          <label class="pv-label" for="llm-provider">服务商</label>
+          <select class="pv-select" id="llm-provider">
+            <option value="openai">OpenAI</option>
+            <option value="anthropic">Anthropic Claude</option>
+            <option value="custom">自定义 (OpenAI 兼容)</option>
+          </select>
+        </div>
+
+        <div class="pv-form-group">
+          <label class="pv-label" for="api-key">API Key</label>
+          <input type="password" class="pv-input" id="api-key" placeholder="请输入 API Key">
+          <p class="pv-hint">密钥仅存储在本地，不会上传到任何服务器。</p>
+        </div>
+
+        <div class="pv-form-group">
+          <label class="pv-label" for="api-base-url">API Base URL</label>
+          <input type="text" class="pv-input" id="api-base-url" placeholder="https://api.openai.com/v1">
+        </div>
+
+        <div class="pv-form-group">
+          <label class="pv-label" for="model-name">模型名称</label>
+          <input type="text" class="pv-input" id="model-name" placeholder="gpt-4o-mini">
+        </div>
+      </section>
+
+      <!-- Interaction Settings -->
+      <section class="pv-section">
+        <h2 class="pv-section-title">交互设置</h2>
+
+        <div class="pv-form-group">
+          <label class="pv-label">划词触发方式</label>
+          <div class="pv-radio-group">
+            <label class="pv-radio-option">
+              <input type="radio" name="trigger-mode" value="icon" checked>
+              <span>划词 + 点击图标（默认）</span>
+            </label>
+            <label class="pv-radio-option">
+              <input type="radio" name="trigger-mode" value="auto">
+              <span>划词自动弹出释义</span>
+            </label>
+            <label class="pv-radio-option">
+              <input type="radio" name="trigger-mode" value="hotkey">
+              <span>快捷键 + 划词</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="pv-form-group" id="hotkey-group" style="display:none;">
+          <label class="pv-label" for="hotkey-input">快捷键</label>
+          <input type="text" class="pv-input" id="hotkey-input" placeholder="Alt" readonly>
+          <p class="pv-hint">按下快捷键后选中文字即触发查词</p>
+        </div>
+      </section>
+
+      <!-- Review Settings -->
+      <section class="pv-section">
+        <h2 class="pv-section-title">复习设置</h2>
+
+        <div class="pv-form-group">
+          <label class="pv-label" for="review-batch-size">每次复习数量</label>
+          <input type="number" class="pv-input pv-input-number" id="review-batch-size" min="5" max="100" value="20">
+        </div>
+      </section>
+
+      <!-- Save Button -->
+      <div class="pv-form-actions">
+        <button type="submit" class="pv-btn-save" id="btn-save">保存设置</button>
+      </div>
+    </form>
+
+    <!-- Data Management -->
+    <section class="pv-section pv-section-data">
+      <h2 class="pv-section-title">数据管理</h2>
+
+      <div class="pv-data-actions">
+        <button class="pv-btn-export" id="btn-export">📤 导出 JSON</button>
+        <label class="pv-btn-import" id="btn-import-label">
+          📥 导入 JSON
+          <input type="file" id="btn-import" accept=".json" hidden>
+        </label>
+        <button class="pv-btn-clear" id="btn-clear">🗑️ 清空生词本</button>
+      </div>
+
+      <div class="pv-data-info" id="data-info"></div>
+    </section>
+
+    <!-- Toast -->
+    <div class="pv-toast" id="toast" style="display:none;"></div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
