@@ -1,22 +1,25 @@
 {
   "manifest_version": 3,
   "name": "PaperVocab",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "学术论文划词生词本 — 智能释义 · 生词积累 · 卡片复习",
   "permissions": [
     "storage",
     "unlimitedStorage",
-    "activeTab"
+    "activeTab",
+    "contextMenus"
   ],
   "host_permissions": [
-    "https://*/*"
+    "https://*/*",
+    "http://*/*",
+    "file://*/*"
   ],
   "background": {
     "service_worker": "background/service-worker.js"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
+      "matches": ["<all_urls>", "file://*/*"],
       "js": ["content/content.js"],
       "css": ["content/content.css"],
       "run_at": "document_idle"

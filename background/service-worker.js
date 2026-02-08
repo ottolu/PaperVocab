@@ -432,4 +432,115 @@ async function handleGetSettings() {
   return { settings };
 }
 
+// ═══════════════════════════════════════════════════════════════
+// Context Menu — "PaperVocab 查词" on right-click selection
+// ═══════════════════════════════════════════════════════════════
+
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.contextMenus.create({
+    id: 'papervocab-lookup',
+    title: 'PaperVocab 查词: "%s"',
+    contexts: ['selection'],
+  });
+  console.log('[PaperVocab] Context menu created');
+});
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId !== 'papervocab-lookup') return;
+
+  const selectedText = (info.selectionText || '').trim();
+  if (!selectedText) return;
+
+  console.log('[PaperVocab] Context menu lookup:', selectedText);
+
+  const settings = await getSettings();
+
+  if (!settings.apiKey) {
+    // No API key — show notification or try to open options
+    chrome.runtime.openOptionsPage();
+    return;
+  }
+
+  // Build context
+  const context = {
+    sentence: '',
+    sourceTitle: tab?.title || '',
+    sourceUrl: tab?.url || '',
+    queriedAt: new Date().toISOString(),
+  };
+
+  // Check if already saved
+  const existingWord = await getWordByLemma(selectedText);
+
+  if (existingWord) {
+    // Already saved — bump count, append context
+    const updatedContexts = [...(existingWord.contexts || []), context];
+    await updateWord(existingWord.id, {
+      queryCount: (existingWord.queryCount || 0) + 1,
+      contexts: updatedContexts,
+    });
+    // Show result in popup notification via content script
+    try {
+      await chrome.tabs.sendMessage(tab.id, {
+        type: 'SHOW_CONTEXT_MENU_RESULT',
+        wordData: {
+          ...existingWord,
+          queryCount: (existingWord.queryCount || 0) + 1,
+          contexts: updatedContexts,
+        },
+        exists: true,
+      });
+    } catch (e) {
+      console.log('[PaperVocab] Could not send result to tab:', e.message);
+    }
+    return;
+  }
+
+  // New word — query LLM
+  try {
+    const llmResult = await queryWord(selectedText, '', settings);
+    const wordData = {
+      word: llmResult.lemma || selectedText,
+      originalForm: selectedText,
+      phonetic: llmResult.phonetic || '',
+      definition: llmResult.definition || '',
+      example: llmResult.example || '',
+      context,
+    };
+
+    // Auto-save to vocabulary
+    const now = new Date().toISOString();
+    const entry = {
+      id: generateId(),
+      word: wordData.word,
+      originalForm: wordData.originalForm,
+      phonetic: wordData.phonetic,
+      definition: wordData.definition,
+      example: wordData.example,
+      contexts: [context],
+      queryCount: 1,
+      masteryLevel: 0,
+      mastered: false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await saveWord(entry);
+    console.log('[PaperVocab] Word saved via context menu:', entry.word);
+
+    // Try to show result in content script
+    try {
+      await chrome.tabs.sendMessage(tab.id, {
+        type: 'SHOW_CONTEXT_MENU_RESULT',
+        wordData: entry,
+        exists: false,
+        justSaved: true,
+      });
+    } catch (e) {
+      console.log('[PaperVocab] Could not send result to tab:', e.message);
+    }
+  } catch (error) {
+    console.error('[PaperVocab] Context menu LLM query failed:', error);
+  }
+});
+
 console.log('[PaperVocab] Service worker started');

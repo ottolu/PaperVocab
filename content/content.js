@@ -477,6 +477,27 @@
     }
   }
 
+  function renderTooltipSaved(wd) {
+    if (!tooltipEl) return;
+    const esc = escapeHtmlLocal;
+
+    tooltipEl.innerHTML = `
+      <div class="pv-tooltip-header">
+        <span class="pv-tooltip-word">${esc(wd.word || wd.originalForm || '')}</span>
+        <span class="pv-tooltip-phonetic">${esc(wd.phonetic || '')}</span>
+        <span class="pv-tooltip-badge" style="background:#ECFDF5;color:#10B981;">已自动收藏 ✓</span>
+      </div>
+      <div class="pv-tooltip-body">
+        <div class="pv-tooltip-definition">${esc(wd.definition || '')}</div>
+        ${wd.example ? `<div class="pv-tooltip-example">${esc(wd.example)}</div>` : ''}
+      </div>
+    `;
+
+    if (currentSelection && currentSelection.rect) {
+      positionTooltip(tooltipEl, currentSelection.rect);
+    }
+  }
+
   function removeTooltip() {
     if (tooltipEl && tooltipEl.parentNode) {
       tooltipEl.remove();
@@ -687,6 +708,66 @@
     }
   });
 
+  // ─── Context Menu Result Handler ──────────────────────────
+  // Receives word data from service worker when user uses right-click
+  // "PaperVocab 查词" context menu. Shows tooltip at viewport center
+  // since we don't have a precise selection rect from the context menu path.
+
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type !== 'SHOW_CONTEXT_MENU_RESULT') return;
+
+    console.log('[PaperVocab] Context menu result received:', message.wordData?.word);
+
+    // Use current selection rect if available, otherwise center of viewport
+    let rect;
+    const sel = window.getSelection();
+    if (sel && !sel.isCollapsed && sel.rangeCount) {
+      const liveRect = sel.getRangeAt(0).getBoundingClientRect();
+      if (liveRect.width > 0 || liveRect.height > 0) {
+        rect = {
+          top: liveRect.top,
+          right: liveRect.right,
+          bottom: liveRect.bottom,
+          left: liveRect.left,
+          width: liveRect.width,
+          height: liveRect.height,
+        };
+      }
+    }
+    if (!rect) {
+      // Fallback: position near center-top of viewport
+      const cx = window.innerWidth / 2;
+      const cy = window.innerHeight * 0.3;
+      rect = { top: cy, right: cx, bottom: cy, left: cx, width: 0, height: 0 };
+    }
+
+    // Store selection info for the tooltip renderer
+    currentSelection = {
+      word: message.wordData?.word || message.wordData?.originalForm || '',
+      rect,
+      sentence: '',
+    };
+
+    removeTooltip();
+    removeTrigger();
+    showTooltip(rect);
+
+    // Render the result directly (already queried & saved by service worker)
+    const wd = message.wordData;
+    const exists = message.exists;
+
+    if (exists) {
+      renderTooltipResult(wd, true);
+    } else if (message.justSaved) {
+      // New word, already auto-saved by context menu handler
+      renderTooltipSaved(wd);
+    } else {
+      renderTooltipResult(wd, false);
+    }
+
+    sendResponse({ received: true });
+  });
+
   // ─── Local Utility Functions ───────────────────────────────
   // (Duplicated from lib/utils.js since content scripts can't importScripts)
 
@@ -721,6 +802,80 @@
     const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
     return str.replace(/[&<>"']/g, (c) => map[c]);
   }
+
+  // ─── PDF / iframe Support ───────────────────────────────
+  // Try to attach selection listeners to same-origin iframes (e.g. PDF.js).
+  // Wrapped in try-catch so failures never break the main content script.
+
+  function attachToEmbeddedFrames() {
+    try {
+      const iframes = document.querySelectorAll('iframe');
+      iframes.forEach((iframe) => {
+        if (iframe._pvAttached) return; // avoid duplicate listeners
+        try {
+          const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (iframeDoc) {
+            iframe._pvAttached = true;
+            iframeDoc.addEventListener('mouseup', () => {
+              setTimeout(() => {
+                const sel = iframeDoc.getSelection ? iframeDoc.getSelection() : null;
+                if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+
+                const text = sel.toString().trim();
+                if (!text || !isEnglishWordLocal(text)) return;
+
+                const range = sel.getRangeAt(0);
+                const innerRect = range.getBoundingClientRect();
+                const frameRect = iframe.getBoundingClientRect();
+
+                const rect = {
+                  top: innerRect.top + frameRect.top,
+                  right: innerRect.right + frameRect.left,
+                  bottom: innerRect.bottom + frameRect.top,
+                  left: innerRect.left + frameRect.left,
+                  width: innerRect.width,
+                  height: innerRect.height,
+                };
+                if (rect.width === 0 && rect.height === 0) return;
+
+                let sentence = '';
+                try {
+                  const c = range.startContainer.parentElement;
+                  if (c) sentence = extractSentenceLocal(c.textContent || '', text);
+                } catch (_) { /* ignore */ }
+
+                console.log('[PaperVocab] iframe mouseup — selection:', text);
+                removeTooltip();
+                removeTrigger();
+                currentSelection = { word: text, rect, sentence };
+
+                if (currentSettings && currentSettings.triggerMode === 'auto') {
+                  showTooltip(rect);
+                  doQuery();
+                } else {
+                  showTrigger(rect);
+                }
+              }, 10);
+            });
+            console.log('[PaperVocab] Attached to iframe:', iframe.src?.substring(0, 60));
+          }
+        } catch (_) {
+          // Cross-origin iframe — expected, skip silently
+        }
+      });
+    } catch (_) { /* ignore */ }
+  }
+
+  // Run after a delay, and re-run on DOM changes — all safely wrapped
+  try {
+    setTimeout(attachToEmbeddedFrames, 2000);
+    const observeTarget = document.body || document.documentElement;
+    if (observeTarget) {
+      new MutationObserver(() => {
+        setTimeout(attachToEmbeddedFrames, 500);
+      }).observe(observeTarget, { childList: true, subtree: true });
+    }
+  } catch (_) { /* ignore */ }
 
   console.log('[PaperVocab] Content script loaded');
 })();

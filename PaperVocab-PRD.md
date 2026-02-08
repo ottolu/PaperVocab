@@ -1,6 +1,6 @@
 # PaperVocab — 学术论文划词生词本 Chrome 插件 PRD
 
-> **Version:** 1.0.0 (Implementation Release)
+> **Version:** 1.1.0
 > **Last Updated:** 2026-02-08
 > **Author:** User + Claude
 
@@ -54,7 +54,7 @@
 
 ### 2.2 Feature 1: 划词查询
 
-**触发方式：划词 + 点击图标（默认）/ 划词自动弹出**
+**触发方式：划词 + 点击图标（默认）/ 划词自动弹出 / 右键菜单**
 
 #### 用户流程
 1. 用户在网页中用鼠标选中一个英文单词（或最多 3 个单词的短语）
@@ -80,6 +80,7 @@
 | 划词 + 图标（默认） | `icon` | 选中文字后显示浮标，点击浮标触发查询 | ✅ 已实现 |
 | 划词自动弹出 | `auto` | 选中文字后直接弹出释义浮窗，无需点击 | ✅ 已实现 |
 | 快捷键 + 划词 | `hotkey` | 选中文字后按快捷键触发 | ⚠️ 设置 UI 已搭建，触发逻辑待实现 |
+| 右键菜单 | — | 选中文字 → 右键 → 「PaperVocab 查词」 | ✅ 已实现 |
 
 #### 词形还原策略（Lemmatization）
 - **由 LLM 统一处理**：在查词 Prompt 中要求 LLM 返回 `lemma`（单词原形）字段
@@ -123,10 +124,14 @@
 - `content.css` 文件为空（仅注释），不向宿主页面注入任何样式规则
 
 #### PDF 支持
-- 兼容 Chrome 内置 PDF Viewer
-- 兼容基于 PDF.js 的在线阅读器（如 arXiv）
-- 通过 `matches: ["<all_urls>"]` 注入到所有页面
-- 状态：待充分测试验证
+- Chrome 内置 PDF Viewer 使用浏览器级 `<embed>` 沙箱，content script **无法注入**
+- PDF.js 扩展的 iframe 通常为跨域，同样无法附加事件监听
+- **替代方案**：通过右键菜单「PaperVocab 查词」支持 PDF 中的查词
+  - 右键菜单能获取浏览器原生选区文本（`info.selectionText`），不依赖 content script
+  - 查询结果自动保存到生词本
+  - 在 PDF 页面中不显示浮窗（content script 未注入），但可通过 Popup 查看
+  - 在普通网页中右键菜单会同时显示释义浮窗
+- 通过 `matches: ["<all_urls>", "file://*/*"]` 注入到所有页面
 
 ### 2.3 Feature 2: 生词本
 
@@ -235,6 +240,36 @@
 - **清空生词本**：两次 `confirm()` 确认 → 清空 `chrome.storage.local` 的 words 数组
 - **底部信息**：显示当前生词本词数
 - **保存反馈**：绿色 toast 提示，3 秒自动消失
+
+### 2.6 Feature 5: 右键菜单查词
+
+**入口：选中文字 → 右键 → 「PaperVocab 查词: "xxx"」**
+
+#### 功能说明
+- 通过 `chrome.contextMenus` API 注册右键菜单项，`contexts: ['selection']` 仅在有文字选区时显示
+- 菜单项注册于 `chrome.runtime.onInstalled` 事件中（首次安装/扩展更新时执行）
+
+#### 用户流程
+1. 在任意页面（含 PDF）选中英文单词
+2. 右键 → 点击「PaperVocab 查词: "xxx"」
+3. Service Worker 检查 API Key → 未配置则打开设置页
+4. 检查是否已收藏：
+   - **已收藏**：queryCount++、追加 context → 通知 content script 显示「已收藏 ×N」浮窗
+   - **未收藏**：调用 LLM → 自动保存到生词本 → 通知 content script 显示「已自动收藏 ✓」浮窗
+5. 通过 `chrome.tabs.sendMessage` 发送 `SHOW_CONTEXT_MENU_RESULT` 消息到页面
+
+#### 与划词查询的区别
+| 维度 | 划词查询 | 右键菜单查词 |
+|---|---|---|
+| 触发方式 | 选中 + 浮标点击 / 自动 | 选中 + 右键 + 菜单点击 |
+| 自动保存 | 否，用户需点击「收藏」 | **是，自动保存** |
+| 浮窗显示 | 始终显示 | 仅 content script 已注入的页面 |
+| PDF 页面 | 不可用（无法注入） | **可用**（菜单获取原生选区） |
+| 句子上下文 | 从 DOM 提取 | 无（`selectionText` 仅含选中文本） |
+
+#### 限制
+- PDF 页面中查词后无浮窗反馈，单词已保存可在 Popup 中查看
+- `SHOW_CONTEXT_MENU_RESULT` 发送失败时（content script 未注入）静默忽略
 
 ---
 
@@ -399,13 +434,13 @@ papervocab/
   "name": "PaperVocab",
   "version": "1.0.0",
   "description": "学术论文划词生词本 — 智能释义 · 生词积累 · 卡片复习",
-  "permissions": ["storage", "unlimitedStorage", "activeTab"],
-  "host_permissions": ["https://*/*"],
+  "permissions": ["storage", "unlimitedStorage", "activeTab", "contextMenus"],
+  "host_permissions": ["https://*/*", "http://*/*", "file://*/*"],
   "background": {
     "service_worker": "background/service-worker.js"
   },
   "content_scripts": [{
-    "matches": ["<all_urls>"],
+    "matches": ["<all_urls>", "file://*/*"],
     "js": ["content/content.js"],
     "css": ["content/content.css"],
     "run_at": "document_idle"
@@ -438,6 +473,7 @@ Content Script 与 Service Worker 之间通过 `chrome.runtime.sendMessage` 通�
 | `SAVE_WORD` | Content → SW | `{ wordData: { word, originalForm, phonetic, definition, example, context } }` | `{ success, wordEntry }` |
 | `GET_SETTINGS` | Content → SW | 无 | `{ settings }` |
 | `OPEN_OPTIONS` | Content → SW | 无 | `{ success }`（触发 `chrome.runtime.openOptionsPage()`） |
+| `SHOW_CONTEXT_MENU_RESULT` | SW → Content | `{ wordData, exists, justSaved }` | `{ received: true }` |
 
 Popup 和 Options 页面直接调用 `chrome.storage.local/sync`，不经过 Service Worker。
 
@@ -527,7 +563,7 @@ Popup 和 Options 页面直接调用 `chrome.storage.local/sync`，不经过 Ser
 | 环境 | 要求 |
 |---|---|
 | Chrome 版本 | ≥ 116（MV3 稳定支持） |
-| 页面类型 | 普通 HTML 网页、Chrome 内置 PDF Viewer（待验证） |
+| 页面类型 | 普通 HTML 网页（划词+右键菜单）、Chrome 内置 PDF Viewer（仅右键菜单） |
 | 重点适配网站 | arXiv、PubMed、Nature、Science、IEEE、Springer、Google Scholar |
 
 ### 7.3 安全性
@@ -563,12 +599,16 @@ Popup 和 Options 页面直接调用 `chrome.storage.local/sync`，不经过 Ser
 - [x] Options 数据管理（导出/导入 JSON、清空）
 - [x] 首次使用引导（无 API Key 提示、空状态引导）
 - [x] 边界情况处理（Esc 关闭、滚动关闭、选区校验）
+- [x] 右键菜单查词（contextMenus API，自动保存，支持 PDF 页面选词）
+- [x] Content Script 接收右键菜单结果并显示浮窗（SHOW_CONTEXT_MENU_RESULT）
 
 ### 待完善
 - [ ] 快捷键触发模式（hotkey）：设置 UI 已搭建，content.js 中的键盘监听逻辑待实现
-- [ ] PDF 支持：需在 Chrome 内置 PDF Viewer 中充分测试
 - [ ] Popup 虚拟滚动：大量单词时的性能优化
 - [ ] 生词本单词高亮：在网页上标记已收藏的生词
+
+### 已验证的限制
+- Chrome 内置 PDF Viewer 无法注入 content script（浏览器级 `<embed>` 沙箱）→ 已通过右键菜单替代
 
 ---
 
@@ -576,7 +616,7 @@ Popup 和 Options 页面直接调用 `chrome.storage.local/sync`，不经过 Ser
 
 | # | 问题 | 状态 |
 |---|---|---|
-| 1 | Chrome 内置 PDF Viewer 的 Content Script 注入是否在 MV3 下可行？ | 待验证 |
+| 1 | Chrome 内置 PDF Viewer 的 Content Script 注入是否在 MV3 下可行？ | **已验证：不可行。`<embed>` 沙箱无法突破，改用右键菜单替代** |
 | 2 | `chrome.storage.sync` 100KB 限制下的存储分工？ | **已决定：设置用 sync，单词用 local** |
 | 3 | LLM 返回格式不正确时的 fallback 策略？ | **已决定：三级容错（直接 parse → 正则提取 → 全文兜底）** |
 | 4 | 单词 lemmatization 是否需要本地库？ | **已决定：由 LLM 处理，零依赖** |
